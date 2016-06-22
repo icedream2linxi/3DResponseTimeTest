@@ -11,6 +11,9 @@
 #define IDC_TEST_DURATION_SPIN          1003
 #define IDC_REPORT_ED                   1004
 #define IDC_PICK_COLOR_ST               1005
+#define IDC_TEST_INTERVAL_ED            1006
+#define IDC_TEST_INTERVAL_ED2           1007
+#define IDC_HOTKEY_ED                   1007
 
 // Next default values for new objects
 // 

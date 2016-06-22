@@ -8,6 +8,12 @@
 #include "aboutdlg.h"
 #include "MainDlg.h"
 
+#include <chrono>
+#include <vector>
+#include <algorithm>
+#include <numeric>
+
+#define  DEFAULT_HOTKEY L"W"
 
 HWND hDlg = NULL;
 HHOOK mHook = NULL;
@@ -35,7 +41,9 @@ LRESULT CALLBACK LowLevelMouseProc(
 
 CMainDlg::CMainDlg()
 	: m_testDuration(5)
+	, m_testInterval(500)
 	, m_pickColor(RGB(255, 255, 255))
+	, m_stopTest(true)
 {
 
 }
@@ -72,7 +80,10 @@ LRESULT CMainDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 	UIAddChildWindowContainer(m_hWnd);
 
 	m_edPickPoint.Attach(GetDlgItem(IDC_PICK_POINT_ED));
+	m_edHotkey.Attach(GetDlgItem(IDC_HOTKEY_ED));
 	m_stPickColor.Attach(GetDlgItem(IDC_PICK_COLOR_ST));
+
+	m_edHotkey.SetWindowText(DEFAULT_HOTKEY);
 
 	HWND hTopWnd = getTopWindow();
 	CRect rect;
@@ -84,6 +95,7 @@ LRESULT CMainDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 	m_edPickPoint.SetWindowText(str);
 
 	m_pickColor = pickColor(m_pickPnt);
+	setPickColor(m_pickColor);
 
 	return TRUE;
 }
@@ -108,8 +120,19 @@ LRESULT CMainDlg::OnAppAbout(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*
 
 LRESULT CMainDlg::OnOK(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
 {
-	// TODO: Add validation code 
-	CloseDialog(wID);
+	if (!m_stopTest) {
+		m_stopTest = true;
+		if (m_thread->joinable()) {
+			m_thread->join();
+		}
+	}
+
+	HWND hWnd = ::WindowFromPoint(m_pickPnt);
+	//::SetActiveWindow(hWnd);
+	::SetForegroundWindow(hWnd);
+
+	m_stopTest = false;
+	m_thread.reset(new std::thread(&CMainDlg::runTest, this));
 	return 0;
 }
 
@@ -164,21 +187,35 @@ COLORREF CMainDlg::pickColor(const CPoint &pnt)
 	COLORREF color = ::GetPixel(hDC, pnt.x, pnt.y);
 	::ReleaseDC(NULL, hDC);
 
+	return color;
+}
+
+
+void CMainDlg::setPickColor(COLORREF color)
+{
 	CDCHandle dc = m_stPickColor.GetDC();
 	CRect rect;
 	m_stPickColor.GetClientRect(rect);
 	CBrush brush;
 	brush.CreateSolidBrush(color);
 	dc.FillRect(rect, brush);
-
-	return color;
 }
 
+WORD CMainDlg::getHotkey()
+{
+	CString str;
+	auto len = m_edHotkey.GetWindowTextLength();
+	++len;
+	m_edHotkey.GetWindowText(str.GetBuffer(len), len);
+	str.ReleaseBuffer();
+	return str[0];
+}
 
 LRESULT CMainDlg::OnPicked(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/)
 {
 	m_pickPnt = hookPnt;
 	m_pickColor = pickColor(m_pickPnt);
+	setPickColor(m_pickColor);
 
 	CString str;
 	str.Format(L"(%d, %d)", m_pickPnt.x, m_pickPnt.y);
@@ -186,9 +223,109 @@ LRESULT CMainDlg::OnPicked(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, 
 	return 0;
 }
 
+LRESULT CMainDlg::OnTestDown(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/)
+{
+	::SetWindowText(GetDlgItem(IDC_REPORT_ED), m_report);
+	::SetForegroundWindow(m_hWnd);
+	//m_thread.reset();
+	//m_stopTest = true;
+	return 0;
+}
+
+void CMainDlg::runTest()
+{
+	CPoint pickPnt(m_pickPnt);
+	COLORREF testColor = pickColor(pickPnt);
+	std::chrono::seconds testDuration(m_testDuration);
+	std::chrono::milliseconds testInterval(m_testInterval);
+	std::vector<std::chrono::milliseconds> responseTimes;
+	WORD hotkey = m_hostKey;
+	UINT scanCode = 1 | (MapVirtualKeyEx((UINT)hotkey, MAPVK_VK_TO_VSC_EX, GetKeyboardLayout(0)) << 16);
+
+	INPUT input = { 0 };
+	input.type = INPUT_KEYBOARD;
+	input.ki.wVk = hotkey;
+	input.ki.wScan = scanCode;
+	
+	auto startTestTime = std::chrono::high_resolution_clock::now();
+	auto prevTestTime = startTestTime;
+	while (!m_stopTest) {
+		auto nowTime = std::chrono::high_resolution_clock::now();
+		auto duration = nowTime - prevTestTime;
+		if (duration > testDuration) {
+			break;
+		}
+
+		input.ki.dwFlags = 0;
+		SendInput(1, &input, sizeof(input));
+		input.ki.dwFlags = KEYEVENTF_KEYUP;
+		SendInput(1, &input, sizeof(input));
+
+		auto sendTime = std::chrono::high_resolution_clock::now();
+		nowTime = sendTime;
+		while (nowTime - sendTime < testInterval) {
+			auto color = pickColor(pickPnt);
+			if (color != testColor) {
+				responseTimes.push_back(std::chrono::duration_cast<std::chrono::milliseconds>(nowTime - sendTime));
+				testColor = color;
+				break;
+			}
+
+			std::this_thread::sleep_for(std::chrono::microseconds(1));
+			nowTime = std::chrono::high_resolution_clock::now();
+		}
+
+		nowTime = std::chrono::high_resolution_clock::now();
+		duration = nowTime - prevTestTime;
+		if (duration < testInterval) {
+			std::this_thread::sleep_for(testInterval - duration);
+		}
+	}
+
+	auto minmax = std::minmax_element(responseTimes.begin(), responseTimes.end());
+	decltype(responseTimes)::value_type total(0);
+	for (auto &t : responseTimes)
+		total += t;
+
+	m_report.Empty();
+	if (responseTimes.empty()) {
+		m_report = L"无测试结果！";
+	}
+	else {
+		constexpr int bufferSize = 1024;
+		swprintf_s(m_report.GetBuffer(bufferSize), bufferSize, L"最小响应(ms)：%I64d\r\n最大响应(ms)：%I64d\r\n平均响应(ms)：%.2lf",
+			minmax.first->count(), minmax.second->count(), (double)total.count() / responseTimes.size());
+		m_report.ReleaseBuffer();
+	}
+
+	PostMessage(WM_TEST_DWON);
+}
+
 LRESULT CMainDlg::OnPaint(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled)
 {
 	bHandled = FALSE;
-	pickColor(m_pickPnt);
+	setPickColor(m_pickColor);
+	return 0;
+}
+
+
+LRESULT CMainDlg::OnEnChangeHotkeyEd(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
+{
+	auto len = m_edHotkey.GetWindowTextLength();
+	if (len == 0) {
+		m_edHotkey.SetWindowText(DEFAULT_HOTKEY);
+		return 0;
+	}
+
+	CString str;
+	++len;
+	m_edHotkey.GetWindowText(str.GetBuffer(len), len);
+	str.ReleaseBuffer();
+	m_hostKey = str[0];
+
+	if (str.GetLength() > 1) {
+		str.Delete(1, len - 1);
+		m_edHotkey.SetWindowText(str);
+	}
 	return 0;
 }
