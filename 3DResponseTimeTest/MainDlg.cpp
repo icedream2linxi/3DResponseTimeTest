@@ -247,7 +247,7 @@ void CMainDlg::runTest()
 	auto prevTestTime = startTestTime;
 	while (!m_stopTest) {
 		auto nowTime = std::chrono::high_resolution_clock::now();
-		auto duration = nowTime - prevTestTime;
+		auto duration = nowTime - startTestTime;
 		if (duration > testDuration) {
 			break;
 		}
@@ -259,7 +259,7 @@ void CMainDlg::runTest()
 
 		auto sendTime = std::chrono::high_resolution_clock::now();
 		nowTime = sendTime;
-		while (nowTime - sendTime < testInterval) {
+		while (nowTime - sendTime <= testInterval) {
 			auto color = pickColor(pickPnt);
 			if (color != testColor) {
 				responseTimes.push_back(std::chrono::duration_cast<std::chrono::milliseconds>(nowTime - sendTime));
@@ -276,6 +276,8 @@ void CMainDlg::runTest()
 		if (duration < testInterval) {
 			std::this_thread::sleep_for(testInterval - duration);
 		}
+
+		prevTestTime = sendTime;
 	}
 
 	auto minmax = std::minmax_element(responseTimes.begin(), responseTimes.end());
