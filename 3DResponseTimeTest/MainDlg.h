@@ -4,6 +4,8 @@
 
 #pragma once
 
+#define WM_PICKED	(WM_USER + 100)
+
 class CMainDlg : public CDialogImpl<CMainDlg>, public CUpdateUI<CMainDlg>,
 	public CWinDataExchange<CMainDlg>,
 		public CMessageFilter, public CIdleHandler
@@ -28,6 +30,7 @@ public:
 		COMMAND_HANDLER(IDC_PICK_BTN, BN_CLICKED, OnBnClickedPickBtn)
 		NOTIFY_HANDLER(IDC_TEST_DURATION_SPIN, UDN_DELTAPOS, OnDeltaPosTestDurationSpin)
 		MESSAGE_HANDLER(WM_PAINT, OnPaint)
+		MESSAGE_HANDLER(WM_PICKED, OnPicked)
 	END_MSG_MAP()
 
 	BEGIN_DDX_MAP(CMainDlg)
@@ -53,10 +56,12 @@ public:
 private:
 	HWND getTopWindow();
 	COLORREF pickColor(const CPoint &pnt);
+	LRESULT OnPicked(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 
 private:
 	UINT m_testDuration;
 	CEdit m_edPickPoint;
+	CStatic m_stPickColor;
 	CPoint m_pickPnt;
 	COLORREF m_pickColor;
 };

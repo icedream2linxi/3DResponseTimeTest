@@ -8,6 +8,31 @@
 #include "aboutdlg.h"
 #include "MainDlg.h"
 
+
+HWND hDlg = NULL;
+HHOOK mHook = NULL;
+POINT hookPnt;
+LRESULT CALLBACK LowLevelMouseProc(
+	_In_ int    nCode,
+	_In_ WPARAM wParam,
+	_In_ LPARAM lParam
+)
+{
+	if (wParam == WM_LBUTTONDOWN) {
+		MSLLHOOKSTRUCT *pllhs = (MSLLHOOKSTRUCT*)lParam;
+		hookPnt.x = pllhs->pt.x;
+		hookPnt.y = pllhs->pt.y;
+
+		UnhookWindowsHookEx(mHook);
+		mHook = NULL;
+		PostMessage(hDlg, WM_PICKED, 0, 0);
+		hDlg = NULL;
+		return TRUE;
+	}
+
+	return CallNextHookEx(mHook, nCode, wParam, lParam);
+}
+
 CMainDlg::CMainDlg()
 	: m_testDuration(5)
 	, m_pickColor(RGB(255, 255, 255))
@@ -47,6 +72,7 @@ LRESULT CMainDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 	UIAddChildWindowContainer(m_hWnd);
 
 	m_edPickPoint.Attach(GetDlgItem(IDC_PICK_POINT_ED));
+	m_stPickColor.Attach(GetDlgItem(IDC_PICK_COLOR_ST));
 
 	HWND hTopWnd = getTopWindow();
 	CRect rect;
@@ -102,6 +128,10 @@ void CMainDlg::CloseDialog(int nVal)
 
 LRESULT CMainDlg::OnBnClickedPickBtn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
 {
+	if (mHook != NULL)
+		return 0;
+	mHook = SetWindowsHookEx(WH_MOUSE_LL, &LowLevelMouseProc, GetModuleHandle(NULL), NULL);
+	hDlg = m_hWnd;
 	return 0;
 }
 
@@ -133,22 +163,32 @@ COLORREF CMainDlg::pickColor(const CPoint &pnt)
 	HDC hDC = ::GetDC(NULL);
 	COLORREF color = ::GetPixel(hDC, pnt.x, pnt.y);
 	::ReleaseDC(NULL, hDC);
+
+	CDCHandle dc = m_stPickColor.GetDC();
+	CRect rect;
+	m_stPickColor.GetClientRect(rect);
+	CBrush brush;
+	brush.CreateSolidBrush(color);
+	dc.FillRect(rect, brush);
+
 	return color;
 }
 
 
+LRESULT CMainDlg::OnPicked(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/)
+{
+	m_pickPnt = hookPnt;
+	m_pickColor = pickColor(m_pickPnt);
+
+	CString str;
+	str.Format(L"(%d, %d)", m_pickPnt.x, m_pickPnt.y);
+	m_edPickPoint.SetWindowText(str);
+	return 0;
+}
+
 LRESULT CMainDlg::OnPaint(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled)
 {
 	bHandled = FALSE;
-	HWND hWnd = GetDlgItem(IDC_PICK_COLOR_ST);
-	CRect rect;
-	::GetClientRect(hWnd, &rect);
-	HDC hDC = ::GetDC(hWnd);
-
-	HBRUSH hBrush = ::CreateSolidBrush(m_pickColor);
-	::FillRect(hDC, rect, hBrush);
-	::DeleteObject(hBrush);
-
-	::ReleaseDC(hWnd, hDC);
+	pickColor(m_pickPnt);
 	return 0;
 }
