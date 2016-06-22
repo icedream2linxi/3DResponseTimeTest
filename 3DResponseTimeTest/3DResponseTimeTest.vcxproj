@@ -173,4 +173,9 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+  <ProjectExtensions>
+    <VisualStudio>
+      <UserProperties RESOURCE_FILE="3DResponseTimeTest.rc" />
+    </VisualStudio>
+  </ProjectExtensions>
 </Project>

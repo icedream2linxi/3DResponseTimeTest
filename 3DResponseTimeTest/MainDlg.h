@@ -5,10 +5,13 @@
 #pragma once
 
 class CMainDlg : public CDialogImpl<CMainDlg>, public CUpdateUI<CMainDlg>,
+	public CWinDataExchange<CMainDlg>,
 		public CMessageFilter, public CIdleHandler
 {
 public:
 	enum { IDD = IDD_MAINDLG };
+
+	CMainDlg();
 
 	virtual BOOL PreTranslateMessage(MSG* pMsg);
 	virtual BOOL OnIdle();
@@ -22,7 +25,13 @@ public:
 		COMMAND_ID_HANDLER(ID_APP_ABOUT, OnAppAbout)
 		COMMAND_ID_HANDLER(IDOK, OnOK)
 		COMMAND_ID_HANDLER(IDCANCEL, OnCancel)
+		COMMAND_HANDLER(IDC_PICK_BTN, BN_CLICKED, OnBnClickedPickBtn)
+		NOTIFY_HANDLER(IDC_TEST_DURATION_SPIN, UDN_DELTAPOS, OnDeltaPosTestDurationSpin)
 	END_MSG_MAP()
+
+	BEGIN_DDX_MAP(CMainDlg)
+		DDX_UINT(IDC_TEST_DURATION_ED, m_testDuration)
+	END_DDX_MAP()
 
 // Handler prototypes (uncomment arguments if needed):
 //	LRESULT MessageHandler(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/)
@@ -36,4 +45,10 @@ public:
 	LRESULT OnCancel(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
 	void CloseDialog(int nVal);
+	LRESULT OnBnClickedPickBtn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnDeltaPosTestDurationSpin(int /*idCtrl*/, LPNMHDR pNMHDR, BOOL& /*bHandled*/);
+
+private:
+	UINT m_testDuration;
+	CEdit m_edPickPoint;
 };

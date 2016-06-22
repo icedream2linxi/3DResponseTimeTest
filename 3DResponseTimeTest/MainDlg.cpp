@@ -8,6 +8,12 @@
 #include "aboutdlg.h"
 #include "MainDlg.h"
 
+CMainDlg::CMainDlg()
+	: m_testDuration(5)
+{
+
+}
+
 BOOL CMainDlg::PreTranslateMessage(MSG* pMsg)
 {
 	return CWindow::IsDialogMessage(pMsg);
@@ -21,6 +27,7 @@ BOOL CMainDlg::OnIdle()
 
 LRESULT CMainDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/)
 {
+	DoDataExchange();
 	// center the dialog on the screen
 	CenterWindow();
 
@@ -76,4 +83,27 @@ void CMainDlg::CloseDialog(int nVal)
 {
 	DestroyWindow();
 	::PostQuitMessage(nVal);
+}
+
+
+LRESULT CMainDlg::OnBnClickedPickBtn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
+{
+	// TODO: Add your control notification handler code here
+
+	return 0;
+}
+
+
+LRESULT CMainDlg::OnDeltaPosTestDurationSpin(int /*idCtrl*/, LPNMHDR pNMHDR, BOOL& /*bHandled*/)
+{
+	LPNMUPDOWN pNMUpDown = reinterpret_cast<LPNMUPDOWN>(pNMHDR);
+	// TODO: Add your control notification handler code here
+	
+	if (pNMUpDown->iDelta < 0 && abs(pNMUpDown->iDelta) >= m_testDuration)
+		m_testDuration = 0;
+	else
+		m_testDuration += pNMUpDown->iDelta;
+
+	DoDataExchange();
+	return 0;
 }
