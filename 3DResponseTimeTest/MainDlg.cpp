@@ -13,7 +13,7 @@
 #include <algorithm>
 #include <numeric>
 
-#define  DEFAULT_HOTKEY L"W"
+#define  DEFAULT_HOTKEY L"J"
 
 HWND hDlg = NULL;
 HHOOK mHook = NULL;
@@ -289,8 +289,10 @@ void CMainDlg::runTest()
 	}
 	else {
 		constexpr int bufferSize = 1024;
-		swprintf_s(m_report.GetBuffer(bufferSize), bufferSize, L"最小响应(ms)：%I64d\r\n最大响应(ms)：%I64d\r\n平均响应(ms)：%.2lf",
-			minmax.first->count(), minmax.second->count(), (double)total.count() / responseTimes.size());
+		swprintf_s(m_report.GetBuffer(bufferSize), bufferSize,
+			L"最小响应：%I64d ms\r\n最大响应：%I64d ms\r\n平均响应：%.2lf ms\r\n测试次数：%d",
+			minmax.first->count(), minmax.second->count(), (double)total.count() / responseTimes.size(),
+			responseTimes.size());
 		m_report.ReleaseBuffer();
 	}
 
@@ -302,10 +304,10 @@ void CMainDlg::stopThread()
 	if (m_thread == nullptr)
 		return;
 
+	m_stopTest = true;
 	if (m_thread->joinable()) {
 		m_thread->join();
 	}
-	m_stopTest = true;
 }
 
 LRESULT CMainDlg::OnPaint(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled)
