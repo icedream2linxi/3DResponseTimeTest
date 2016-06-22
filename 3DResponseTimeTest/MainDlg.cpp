@@ -102,6 +102,8 @@ LRESULT CMainDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 
 LRESULT CMainDlg::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/)
 {
+	stopThread();
+
 	// unregister message filtering and idle updates
 	CMessageLoop* pLoop = _Module.GetMessageLoop();
 	ATLASSERT(pLoop != NULL);
@@ -120,12 +122,7 @@ LRESULT CMainDlg::OnAppAbout(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*
 
 LRESULT CMainDlg::OnOK(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
 {
-	if (!m_stopTest) {
-		m_stopTest = true;
-		if (m_thread->joinable()) {
-			m_thread->join();
-		}
-	}
+	stopThread();
 
 	HWND hWnd = ::WindowFromPoint(m_pickPnt);
 	//::SetActiveWindow(hWnd);
@@ -227,8 +224,7 @@ LRESULT CMainDlg::OnTestDown(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 {
 	::SetWindowText(GetDlgItem(IDC_REPORT_ED), m_report);
 	::SetForegroundWindow(m_hWnd);
-	//m_thread.reset();
-	//m_stopTest = true;
+	stopThread();
 	return 0;
 }
 
@@ -299,6 +295,17 @@ void CMainDlg::runTest()
 	}
 
 	PostMessage(WM_TEST_DWON);
+}
+
+void CMainDlg::stopThread()
+{
+	if (m_thread == nullptr)
+		return;
+
+	if (m_thread->joinable()) {
+		m_thread->join();
+	}
+	m_stopTest = true;
 }
 
 LRESULT CMainDlg::OnPaint(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled)

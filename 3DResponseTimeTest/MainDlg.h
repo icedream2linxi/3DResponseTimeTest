@@ -68,6 +68,7 @@ private:
 	LRESULT OnTestDown(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 
 	void runTest();
+	void stopThread();
 
 private:
 	UINT m_testDuration;
