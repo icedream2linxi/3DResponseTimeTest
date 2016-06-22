@@ -27,6 +27,7 @@ public:
 		COMMAND_ID_HANDLER(IDCANCEL, OnCancel)
 		COMMAND_HANDLER(IDC_PICK_BTN, BN_CLICKED, OnBnClickedPickBtn)
 		NOTIFY_HANDLER(IDC_TEST_DURATION_SPIN, UDN_DELTAPOS, OnDeltaPosTestDurationSpin)
+		MESSAGE_HANDLER(WM_PAINT, OnPaint)
 	END_MSG_MAP()
 
 	BEGIN_DDX_MAP(CMainDlg)
@@ -43,12 +44,19 @@ public:
 	LRESULT OnAppAbout(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnOK(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnCancel(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnPaint(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 
 	void CloseDialog(int nVal);
 	LRESULT OnBnClickedPickBtn(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnDeltaPosTestDurationSpin(int /*idCtrl*/, LPNMHDR pNMHDR, BOOL& /*bHandled*/);
 
 private:
+	HWND getTopWindow();
+	COLORREF pickColor(const CPoint &pnt);
+
+private:
 	UINT m_testDuration;
 	CEdit m_edPickPoint;
+	CPoint m_pickPnt;
+	COLORREF m_pickColor;
 };
