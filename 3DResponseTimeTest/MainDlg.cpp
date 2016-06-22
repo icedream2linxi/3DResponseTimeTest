@@ -321,11 +321,16 @@ LRESULT CMainDlg::OnEnChangeHotkeyEd(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
 	++len;
 	m_edHotkey.GetWindowText(str.GetBuffer(len), len);
 	str.ReleaseBuffer();
-	m_hostKey = str[0];
 
 	if (str.GetLength() > 1) {
 		str.Delete(1, len - 1);
 		m_edHotkey.SetWindowText(str);
 	}
+
+	if (islower(str[0])) {
+		str.Replace(str[0], toupper(str[0]));
+		m_edHotkey.SetWindowText(str);
+	}
+	m_hostKey = str[0];
 	return 0;
 }
